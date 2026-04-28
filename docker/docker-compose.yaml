@@ -1,9 +1,12 @@
 # =============================================================================
-# Development Container — Docker Compose (Base Template)
+# Development Container — Docker Compose (uid1000 variant)
 # =============================================================================
+# This variant pins the in-container account to UID=1000, GID=1000, name=uid1000
+# regardless of the host user. No HOST_UID/HOST_GID injection is required.
+#
 # Usage (standalone):
 #   cd docker
-#   cp .env.example .env            # edit for your machine
+#   cp .env.example .env            # optional: only for CUDA_VERSION / DISPLAY
 #   docker compose build
 #   docker compose up -d
 #   docker compose exec dev zsh
@@ -24,13 +27,10 @@ services:
       dockerfile: Dockerfile
       args:
         CUDA_VERSION: ${CUDA_VERSION:-12.8.0}
-        HOST_UID: ${HOST_UID:?run "bash docker/init-env.sh" first to generate docker/.env}
-        HOST_GID: ${HOST_GID:?run "bash docker/init-env.sh" first to generate docker/.env}
-        HOST_USER: ${USER:-developer}
     image: my-project:latest  # TODO: rename to your image name
 
     environment:
-      - HOST_USER=${USER:-developer}
+      - HOST_USER=uid1000
       - DISPLAY=${DISPLAY:-:1}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
@@ -40,15 +40,15 @@ services:
       - ..:/workspace:cached
 
       # Host git/ssh/auth config (read-only)
-      - ${HOME}/.ssh:/home/${USER:-developer}/.ssh:ro
-      - ${HOME}/.gitconfig:/home/${USER:-developer}/.gitconfig:ro
-      - ${HOME}/.netrc:/home/${USER:-developer}/.netrc:ro
+      - ${HOME}/.ssh:/home/uid1000/.ssh:ro
+      - ${HOME}/.gitconfig:/home/uid1000/.gitconfig:ro
+      - ${HOME}/.netrc:/home/uid1000/.netrc:ro
 
       # X11 / GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
 
       # Pip cache (persist across rebuilds)
-      - pip-cache:/home/${USER:-developer}/.cache/pip
+      - pip-cache:/home/uid1000/.cache/pip
 
     # Shared memory for PyTorch DataLoader workers, NCCL, etc.
     ipc: host

@@ -8,7 +8,8 @@
   "workspaceFolder": "/workspace",
 
   // Run as the non-root user created in the Dockerfile
-  "remoteUser": "${localEnv:USER:developer}",
+  // (uid1000 variant: fixed UID=1000, GID=1000, name=uid1000)
+  "remoteUser": "uid1000",
 
   "customizations": {
     "vscode": {

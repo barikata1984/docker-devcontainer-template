@@ -8,7 +8,7 @@ set -e
 # - Drops to non-root user via gosu
 # =============================================================================
 
-TARGET_USER="${HOST_USER:-developer}"
+TARGET_USER="${HOST_USER:-uid1000}"
 TARGET_HOME=$(eval echo "~${TARGET_USER}" 2>/dev/null || echo "/home/${TARGET_USER}")
 TARGET_GROUP=$(id -gn "${TARGET_USER}" 2>/dev/null || echo "${TARGET_USER}")
 

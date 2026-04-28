@@ -1,7 +1,15 @@
-# Devcontainer Base Template
+# Devcontainer Base Template (uid1000 variant)
 
 NVIDIA CUDA + Ubuntu 24.04 ベースの VS Code devcontainer テンプレート。
 GPU 開発環境を新規プロジェクトごとに素早く立ち上げるためのベース設定。
+
+> **このブランチ (`uid1000`) について**
+> コンテナ内ユーザーを **UID=1000 / GID=1000 / 名前 `uid1000`** に固定したバリアント。
+> ホスト側の `id -u` / `id -g` / `$USER` を build arg に注入する仕組みを廃止し、
+> どのマシンでビルドしても同一イメージが得られる。
+> ホストが UID=1000 の場合はバインドマウントされたファイルの所有権も一致する。
+> ホストが UID=1000 でない場合は `/workspace` 上のファイル所有権が `uid1000` 側からは
+> 別 UID として見える点に注意 (read のみなら問題なし、書き戻しは要 `chown` か別バリアント)。
 
 ## ディレクトリ構成
 
@@ -40,15 +48,15 @@ cd my-new-project/
 
 ### 3. 環境変数を設定
 
-UID/GID は初回起動時に `docker/init-env.sh` が `id -u`/`id -g` をもとに `docker/.env` を自動生成する。
+このブランチではコンテナ内ユーザーは **UID=1000 / GID=1000 / 名前 `uid1000` に固定**されているため、UID/GID をホストから注入する手順は不要。`docker/init-env.sh` は互換のために残してあるが no-op。
 
-- **VS Code (devcontainer)**: 自動。`devcontainer.json` の `initializeCommand` がスクリプトを呼ぶ
-- **CLI (standalone)**: 起動前に1度だけ手動実行
-  ```bash
-  bash docker/init-env.sh
-  ```
+CUDA バージョンや DISPLAY を上書きしたい場合のみ、`docker/.env.example` をコピーして `docker/.env` を作成する:
 
-CUDA バージョンや DISPLAY 等を上書きしたい場合は、生成された `docker/.env` に追記する (項目は `docker/.env.example` を参照)。`docker/.env` は git 管理外なので、UID/GID をリセットしたい場合はファイルを削除すれば次回起動時に再生成される。
+```bash
+cp docker/.env.example docker/.env   # 必要なら CUDA_VERSION や DISPLAY を編集
+```
+
+`docker/.env` は git 管理外。
 
 ### 4. プロジェクト固有の依存を追加
 
@@ -81,18 +89,21 @@ docker compose exec dev zsh
 
 ### 非 root ユーザー
 
-ホストの UID/GID をビルド時に注入し、コンテナ内でもホストと同じ権限で動作。`gosu` でランタイム切替。
+UID=1000 / GID=1000 / 名前 `uid1000` で固定。`gosu` でランタイム切替。
+ホストが UID=1000 ならバインドマウントしたファイルの所有権も自動で一致する。
 
 ### ボリュームマウント
+
+コンテナ側の `~` は `/home/uid1000` を指す。
 
 | ホスト | コンテナ | 用途 |
 |-------|---------|------|
 | プロジェクトルート | `/workspace` | ワークスペース |
-| `~/.ssh` | `~/.ssh` (ro) | SSH 鍵 |
-| `~/.gitconfig` | `~/.gitconfig` (ro) | Git 設定 |
-| `~/.netrc` | `~/.netrc` (ro) | wandb 等の認証 |
+| `~/.ssh` | `/home/uid1000/.ssh` (ro) | SSH 鍵 |
+| `~/.gitconfig` | `/home/uid1000/.gitconfig` (ro) | Git 設定 |
+| `~/.netrc` | `/home/uid1000/.netrc` (ro) | wandb 等の認証 |
 | `/tmp/.X11-unix` | `/tmp/.X11-unix` | GUI 転送 |
-| named volume | `~/.cache/pip` | pip キャッシュ永続化 |
+| named volume | `/home/uid1000/.cache/pip` | pip キャッシュ永続化 |
 
 ### VS Code 拡張 (14個)
 

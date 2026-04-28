@@ -68,25 +68,28 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
-# ---- Non-root user (UID/GID injected at build time) ------------------------
-ARG HOST_UID=1000
-ARG HOST_GID=1000
-ARG HOST_USER=developer
+# ---- Non-root user (fixed UID/GID = 1000, name = uid1000) -------------------
+# This image is pinned to UID/GID 1000 on purpose: bind-mounted files from a
+# host whose primary account is UID=1000 will be owned by `uid1000` inside the
+# container without any per-host build args.
+ARG CONTAINER_UID=1000
+ARG CONTAINER_GID=1000
+ARG CONTAINER_USER=uid1000
 
-RUN if getent group ${HOST_GID} >/dev/null 2>&1; then \
-        existing_grp=$(getent group ${HOST_GID} | cut -d: -f1); \
-        [ "$existing_grp" != "${HOST_USER}" ] && groupmod -n ${HOST_USER} "$existing_grp"; \
+RUN if getent group ${CONTAINER_GID} >/dev/null 2>&1; then \
+        existing_grp=$(getent group ${CONTAINER_GID} | cut -d: -f1); \
+        [ "$existing_grp" != "${CONTAINER_USER}" ] && groupmod -n ${CONTAINER_USER} "$existing_grp"; \
     else \
-        groupadd -g ${HOST_GID} ${HOST_USER}; \
+        groupadd -g ${CONTAINER_GID} ${CONTAINER_USER}; \
     fi \
-    && if getent passwd ${HOST_UID} >/dev/null 2>&1; then \
-         existing_usr=$(getent passwd ${HOST_UID} | cut -d: -f1); \
-         usermod -l ${HOST_USER} -s /bin/zsh -g ${HOST_GID} \
-                 -d /home/${HOST_USER} -m "$existing_usr"; \
+    && if getent passwd ${CONTAINER_UID} >/dev/null 2>&1; then \
+         existing_usr=$(getent passwd ${CONTAINER_UID} | cut -d: -f1); \
+         usermod -l ${CONTAINER_USER} -s /bin/zsh -g ${CONTAINER_GID} \
+                 -d /home/${CONTAINER_USER} -m "$existing_usr"; \
        else \
-         useradd -m -s /bin/zsh -u ${HOST_UID} -g ${HOST_GID} ${HOST_USER}; \
+         useradd -m -s /bin/zsh -u ${CONTAINER_UID} -g ${CONTAINER_GID} ${CONTAINER_USER}; \
        fi \
-    && echo "${HOST_USER} ALL=(ALL) NOPASSWD:ALL" \
+    && echo "${CONTAINER_USER} ALL=(ALL) NOPASSWD:ALL" \
        > /etc/sudoers.d/container-user \
     && chmod 0440 /etc/sudoers.d/container-user
 
